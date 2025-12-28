@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입체도형 탐구 실험실</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js (3D Library) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- html2canvas (Screenshot Library) -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- Fonts & Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f3f4f6; }
+        /* 3D Canvas Container */
+        #canvas-container {
+            width: 100%;
+            height: 350px;
+            background: linear-gradient(to bottom, #e0f2fe, #ffffff);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+        }
+        .input-blank {
+            border-bottom: 2px solid #cbd5e1;
+            padding: 0 4px;
+            color: #2563eb;
+            font-weight: bold;
+            outline: none;
+            transition: border-color 0.3s;
+            background: rgba(255,255,255,0.5);
+        }
+        .input-blank:focus { border-color: #3b82f6; background: white; }
+        /* Custom Scrollbar for the capture area */
+        .capture-area {
+            background-color: white;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-radius: 1rem;
+            overflow: hidden; 
+        }
+        .tab-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        .tab-btn {
+            transition: all 0.2s;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+    <!-- Main Controls Header -->
+    <header class="max-w-4xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800 flex items-center">
+                <i class="fa-solid fa-shapes text-blue-600 mr-2"></i> 입체도형 탐구 실험실
+            </h1>
+            <p class="text-slate-500 text-sm mt-1">원기둥, 원뿔, 구를 관찰하고 특징을 정리해 봅시다.</p>
+        </div>
+        <button onclick="saveScreenshot()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition flex items-center">
+            <i class="fa-solid fa-camera mr-2"></i> 학습 내용 사진으로 저장
+        </button>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="max-w-4xl mx-auto mb-4 flex space-x-2 overflow-x-auto pb-2">
+        <button onclick="switchTab('cylinder')" id="btn-cylinder" class="tab-btn active px-6 py-2 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap">
+            <i class="fa-solid fa-database mr-2"></i>원기둥
+        </button>
+        <button onclick="switchTab('cone')" id="btn-cone" class="tab-btn px-6 py-2 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap">
+            <i class="fa-solid fa-ice-cream mr-2"></i>원뿔
+        </button>
+        <button onclick="switchTab('sphere')" id="btn-sphere" class="tab-btn px-6 py-2 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap">
+            <i class="fa-solid fa-basketball mr-2"></i>구
+        </button>
+    </div>
+
+    <!-- Capture Area (This part will be saved as image) -->
+    <div id="capture-area" class="capture-area max-w-4xl mx-auto bg-white p-6 md:p-8">
+        
+        <!-- Header Info for Screenshot -->
+        <div class="border-b pb-4 mb-6 flex justify-between items-end">
+            <div>
+                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">6학년 2학기</span>
+                <h2 id="section-title" class="text-xl font-bold text-gray-800 mt-1">원기둥의 비밀 탐구</h2>
+            </div>
+            <div class="text-right">
+                <div class="text-sm text-gray-500">학번/이름</div>
+                <input type="text" placeholder="예: 6-1 홍길동" class="text-right font-bold text-gray-700 border-b border-gray-300 focus:outline-none w-40">
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Left: 3D Simulator -->
+            <div class="flex flex-col">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-bold text-gray-500"><i class="fa-solid fa-cube mr-1"></i>3D 관찰하기 (드래그하여 회전)</span>
+                    <div id="sim-controls" class="space-x-2">
+                        <!-- Controls injected by JS -->
+                    </div>
+                </div>
+                <div id="canvas-container"></div>
+                <p id="sim-guide" class="text-xs text-center text-gray-400 mt-2">마우스 왼쪽: 회전 | 휠: 확대/축소 | 오른쪽: 이동</p>
+            </div>
+
+            <!-- Right: Interactive Worksheet -->
+            <div id="worksheet-content" class="space-y-6">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
+
+        <div class="mt-8 pt-4 border-t text-center text-xs text-gray-400">
+            위 내용은 입체도형 탐구 실험실에서 직접 관찰하고 작성한 결과입니다.
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center hidden">
+        <div class="text-center">
+            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500"></i>
+            <p class="mt-4 text-gray-600">이미지 저장 중...</p>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Data & Worksheet Content ---
+        const contents = {
+            cylinder: {
+                title: "원기둥의 비밀 탐구",
+                controls: `<button onclick="toggleNet('cylinder')" class="text-xs bg-white border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-50">전개도 보기</button>`,
+                html: `
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                        <h3 class="font-bold text-slate-700 mb-3">1. 구성 요소 관찰</h3>
+                        <ul class="space-y-4 text-sm text-slate-600">
+                            <li>
+                                ① 위와 아래에 있는 합동인 두 원: <input class="input-blank w-20" type="text">
+                                <p class="text-xs text-slate-400 mt-1 pl-4">💡 힌트: 바닥(밑)에 있는 면이라고 불러요.</p>
+                            </li>
+                            <li>
+                                ② 옆을 둘러싼 곡면: <input class="input-blank w-20" type="text">
+                                <p class="text-xs text-slate-400 mt-1 pl-4">💡 힌트: 옆에 있어서 이 이름이 붙었어요.</p>
+                            </li>
+                            <li>
+                                ③ 두 밑면 사이의 거리: <input class="input-blank w-20" type="text">
+                                <p class="text-xs text-slate-400 mt-1 pl-4">💡 힌트: 키를 재는 것과 비슷해요.</p>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                        <h3 class="font-bold text-blue-800 mb-2">💡 전개도 핵심 탐구</h3>
+                        <p class="text-sm text-blue-700 leading-relaxed">
+                            원기둥을 펼치면 옆면은 <strong>직사각형</strong>이 됩니다.<br>
+                            이때, 옆면의 <strong>가로 길이</strong>는<br>
+                            밑면의 <input class="input-blank w-24 bg-white" type="text">와 같습니다.
+                        </p>
+                    </div>
+                `
+            },
+            cone: {
+                title: "원뿔의 비밀 탐구",
+                controls: ``,
+                html: `
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                        <h3 class="font-bold text-slate-700 mb-3">1. 구성 요소 관찰</h3>
+                        <ul class="space-y-4 text-sm text-slate-600">
+                            <li>
+                                ① 뾰족한 부분의 점: <input class="input-blank w-24" type="text">
+                                <p class="text-xs text-slate-400 mt-1 pl-4">💡 힌트: 가장 꼭대기에 있는 점이에요.</p>
+                            </li>
+                            <li>
+                                ② 꼭짓점과 밑면의 둘레를 잇는 선: <input class="input-blank w-16" type="text">
+                                <p class="text-xs text-slate-400 mt-1 pl-4">💡 힌트: 옆면을 만드는 선('모'는 어미 모 母 자를 써요).</p>
+                            </li>
+                            <li>
+                                ③ 꼭짓점에서 수직으로 내린 선: <input class="input-blank w-16" type="text">
+                                <p class="text-xs text-slate-400 mt-1 pl-4">💡 힌트: 똑바로 잰 길이에요.</p>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                        <h3 class="font-bold text-orange-800 mb-2">💡 길이 비교</h3>
+                        <p class="text-sm text-orange-700 leading-relaxed">
+                            3D 모델을 돌려보며 관찰해 보세요.<br>
+                            <strong>높이</strong>와 <strong>모선</strong> 중에서 더 긴 것은<br>
+                            <input class="input-blank w-20 bg-white" type="text"> 입니다.
+                        </p>
+                    </div>
+                `
+            },
+            sphere: {
+                title: "구의 비밀 탐구",
+                controls: ``,
+                html: `
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                        <h3 class="font-bold text-slate-700 mb-3">1. 특징 관찰</h3>
+                        <ul class="space-y-4 text-sm text-slate-600">
+                            <li>① 평평한 면이나 꼭짓점이 있나요? <br>답: <input class="input-blank w-20" type="text"></li>
+                            <li>② 어느 방향에서 봐도 모양이 같나요? <br>답: <input class="input-blank w-20" type="text"></li>
+                        </ul>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                        <h3 class="font-bold text-purple-800 mb-2">💡 구성 요소</h3>
+                        <p class="text-sm text-purple-700 leading-relaxed mb-3">
+                            구의 가장 안쪽에 있는 점을 <strong>구의 중심</strong>이라 하고,<br>
+                            중심에서 겉면까지의 거리를<br>
+                            <input class="input-blank w-24 bg-white" type="text"> 이라고 합니다.
+                            <span class="block text-xs text-purple-500 mt-1">💡 힌트: 원에서도 중심에서 원주까지의 거리를 이렇게 불러요.</span>
+                        </p>
+                    </div>
+                `
+            }
+        };
+
+        // --- 2. Three.js Setup ---
+        let scene, camera, renderer, controls;
+        let currentMeshGroup = new THREE.Group();
+        let currentTab = 'cylinder';
+        let isNetVisible = false;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = null; // Transparent to see CSS gradient
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(3, 3, 5);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); // preserveDrawingBuffer needed for screenshot
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            // Initial Render
+            loadShape('cylinder');
+            animate();
+        }
+
+        function loadShape(type) {
+            scene.remove(currentMeshGroup);
+            currentMeshGroup = new THREE.Group();
+            isNetVisible = false; // Reset net view
+
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x3b82f6, 
+                roughness: 0.3, 
+                metalness: 0.1,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x1e40af });
+
+            if (type === 'cylinder') {
+                // Cylinder
+                const geometry = new THREE.CylinderGeometry(1, 1, 2.5, 32);
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Edges
+                const edges = new THREE.EdgesGeometry(geometry);
+                const line = new THREE.LineSegments(edges, lineMaterial);
+                
+                currentMeshGroup.add(mesh);
+                currentMeshGroup.add(line);
+
+            } else if (type === 'cone') {
+                // Cone
+                const geometry = new THREE.ConeGeometry(1.2, 2.5, 32);
+                const mesh = new THREE.Mesh(geometry, material);
+                // Shift up so base is at 0
+                mesh.position.y = 0; 
+                
+                const edges = new THREE.EdgesGeometry(geometry);
+                const line = new THREE.LineSegments(edges, lineMaterial);
+                line.position.y = 0;
+
+                // Height Line (Center)
+                const heightGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 1.25, 0), new THREE.Vector3(0, -1.25, 0)]);
+                const heightLine = new THREE.Line(heightGeo, new THREE.LineBasicMaterial({ color: 0xff0000 }));
+                
+                currentMeshGroup.add(mesh);
+                currentMeshGroup.add(line);
+                // currentMeshGroup.add(heightLine); // Optional: internal line
+
+            } else if (type === 'sphere') {
+                // Sphere
+                const geometry = new THREE.SphereGeometry(1.3, 32, 32);
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Wireframe helper to see rotation
+                const wireframe = new THREE.WireframeGeometry(geometry);
+                const line = new THREE.LineSegments(wireframe, new THREE.LineBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.5 }));
+                
+                // Center point
+                const centerGeo = new THREE.SphereGeometry(0.05);
+                const centerMesh = new THREE.Mesh(centerGeo, new THREE.MeshBasicMaterial({color: 0xff0000}));
+
+                // Radius Line
+                const radiusGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(1.3,0,0)]);
+                const radiusLine = new THREE.Line(radiusGeo, new THREE.LineBasicMaterial({color: 0xff0000}));
+
+                currentMeshGroup.add(mesh);
+                currentMeshGroup.add(line);
+                
+                // Group internal details
+                const internals = new THREE.Group();
+                internals.add(centerMesh);
+                internals.add(radiusLine);
+                // Make internals visible through transparent sphere
+                currentMeshGroup.add(internals);
+            }
+
+            scene.add(currentMeshGroup);
+        }
+
+        // Toggle Cylinder Net (Simplified Visualization)
+        function toggleNet(type) {
+            if(type !== 'cylinder') return;
+            
+            scene.remove(currentMeshGroup);
+            currentMeshGroup = new THREE.Group();
+
+            const material = new THREE.MeshStandardMaterial({ color: 0x3b82f6, side: THREE.DoubleSide });
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x1e40af });
+
+            if (!isNetVisible) {
+                // Show Net (Unrolled)
+                // 1. Rectangle Body (Width = 2*PI*r = 6.28, Height = 2.5)
+                const rectGeo = new THREE.PlaneGeometry(6.28, 2.5);
+                const rect = new THREE.Mesh(rectGeo, material);
+                const rectEdges = new THREE.LineSegments(new THREE.EdgesGeometry(rectGeo), lineMaterial);
+                
+                // 2. Top Circle
+                const circGeo = new THREE.CircleGeometry(1, 32);
+                const topCirc = new THREE.Mesh(circGeo, material);
+                topCirc.position.y = 1.25 + 1; // Half height + Radius
+                const topEdges = new THREE.LineSegments(new THREE.EdgesGeometry(circGeo), lineMaterial);
+                topEdges.position.y = 1.25 + 1;
+
+                // 3. Bottom Circle
+                const botCirc = new THREE.Mesh(circGeo, material);
+                botCirc.position.y = -1.25 - 1;
+                const botEdges = new THREE.LineSegments(new THREE.EdgesGeometry(circGeo), lineMaterial);
+                botEdges.position.y = -1.25 - 1;
+
+                currentMeshGroup.add(rect, rectEdges, topCirc, topEdges, botCirc, botEdges);
+                
+                // Adjust camera for flat view
+                controls.reset();
+                camera.position.set(0, 0, 10);
+                
+                isNetVisible = true;
+                document.querySelector('#sim-controls button').innerText = "입체로 보기";
+            } else {
+                // Back to 3D
+                loadShape('cylinder');
+                document.querySelector('#sim-controls button').innerText = "전개도 보기";
+            }
+            scene.add(currentMeshGroup);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- 3. UI Logic ---
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update Buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-blue-600', 'text-white', 'border-blue-600');
+                btn.classList.add('bg-white', 'text-slate-600');
+            });
+            const activeBtn = document.getElementById(`btn-${tab}`);
+            activeBtn.classList.add('active');
+
+            // Update Content
+            document.getElementById('section-title').innerText = contents[tab].title;
+            document.getElementById('sim-controls').innerHTML = contents[tab].controls;
+            document.getElementById('worksheet-content').innerHTML = contents[tab].html;
+
+            // Update 3D Model
+            loadShape(tab);
+        }
+
+        // --- 4. Screenshot Logic ---
+        function saveScreenshot() {
+            const captureArea = document.querySelector("#capture-area");
+            const loading = document.getElementById('loading');
+            
+            // Show loading
+            loading.classList.remove('hidden');
+
+            // Force a re-render of Three.js to ensure buffer is ready (optional but safe)
+            renderer.render(scene, camera);
+
+            // Use html2canvas
+            html2canvas(captureArea, {
+                scale: 2, // High resolution
+                useCORS: true,
+                backgroundColor: "#ffffff"
+            }).then(canvas => {
+                // Create download link
+                const link = document.createElement('a');
+                link.download = `입체도형_탐구_${new Date().toLocaleTimeString()}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+                
+                // Hide loading
+                loading.classList.add('hidden');
+            }).catch(err => {
+                console.error(err);
+                alert("사진 저장 중 오류가 발생했습니다.");
+                loading.classList.add('hidden');
+            });
+        }
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // Initialize
+        init3D();
+        switchTab('cylinder');
+
+    </script>
+</body>
+</html>
