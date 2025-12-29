@@ -9,33 +9,46 @@
     <!-- Three.js (3D Library) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- html2canvas (Screenshot Library) -->
+    <!-- Tween.js for Animation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <!-- html2canvas -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <!-- Fonts & Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f3f4f6; }
-        /* 3D Canvas Container */
-        #canvas-container {
+        
+        /* Layout Wrappers */
+        .viz-wrapper {
+            position: relative;
             width: 100%;
-            height: 400px; /* Slightly taller for better view */
+            height: 450px;
             background: linear-gradient(to bottom, #e0f2fe, #ffffff);
             border-radius: 0.75rem;
             overflow: hidden;
-            position: relative;
             box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
         }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%; 
+        }
+
         .input-blank {
-            border-bottom: 2px solid #cbd5e1;
+            border-bottom: 2px solid #94a3b8;
             padding: 0 4px;
             color: #2563eb;
             font-weight: bold;
             outline: none;
-            transition: border-color 0.3s;
-            background: rgba(255,255,255,0.5);
+            transition: all 0.3s;
+            background: rgba(255,255,255,0.8);
+            text-align: center;
         }
         .input-blank:focus { border-color: #3b82f6; background: white; }
+        .input-correct { border-color: #22c55e; color: #15803d; background-color: #dcfce7; }
+        .input-wrong { border-color: #ef4444; color: #b91c1c; background-color: #fee2e2; }
+        
         .capture-area {
             background-color: white;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
@@ -48,16 +61,18 @@
             border-color: #3b82f6;
         }
         .tab-btn { transition: all 0.2s; }
-        input[type=range] { accent-color: #3b82f6; }
-        /* Control Button Styles */
+        input[type=range] { accent-color: #3b82f6; cursor: pointer; }
         .ctrl-btn {
             font-size: 0.75rem; 
-            padding: 4px 8px; 
+            padding: 6px 12px; 
             border-radius: 0.375rem; 
             transition: all 0.2s;
             border: 1px solid #e5e7eb;
             background-color: white;
             color: #4b5563;
+            font-weight: bold;
+            display: inline-flex; align-items: center;
+            cursor: pointer;
         }
         .ctrl-btn:hover { background-color: #f3f4f6; }
         .ctrl-btn.active { background-color: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
@@ -66,38 +81,28 @@
 <body class="p-4 md:p-8 min-h-screen">
 
     <!-- Header -->
-    <header class="max-w-5xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+    <header class="max-w-6xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-800 flex items-center">
-                <i class="fa-solid fa-shapes text-blue-600 mr-2"></i> 입체도형 탐구 실험실
+                <i class="fa-solid fa-cubes text-blue-600 mr-2"></i> 입체도형 탐구 실험실
             </h1>
-            <p class="text-slate-500 text-sm mt-1">도형을 돌려보고, 자르고, 펼치며 비밀을 찾아보세요.</p>
+            <p class="text-slate-500 text-sm mt-1">도형을 돌리고 펼치며 수학적 원리를 직접 발견해보세요.</p>
         </div>
         <button onclick="saveScreenshot()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition flex items-center text-sm">
             <i class="fa-solid fa-camera mr-2"></i> 학습 내용 저장
         </button>
     </header>
 
-    <!-- Navigation Tabs -->
-    <div class="max-w-5xl mx-auto mb-4 flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-        <button onclick="switchTab('cylinder')" id="btn-cylinder" class="tab-btn active px-4 py-2 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap text-sm">
-            <i class="fa-solid fa-database mr-2"></i>원기둥
-        </button>
-        <button onclick="switchTab('cone')" id="btn-cone" class="tab-btn px-4 py-2 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap text-sm">
-            <i class="fa-solid fa-ice-cream mr-2"></i>원뿔
-        </button>
-        <button onclick="switchTab('sphere')" id="btn-sphere" class="tab-btn px-4 py-2 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap text-sm">
-            <i class="fa-solid fa-basketball mr-2"></i>구
-        </button>
-        <button onclick="switchTab('revolution')" id="btn-revolution" class="tab-btn px-4 py-2 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap text-sm">
-            <i class="fa-solid fa-rotate mr-2"></i>회전체 만들기
-        </button>
+    <!-- Tabs -->
+    <div class="max-w-6xl mx-auto mb-4 flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+        <button onclick="switchTab('cylinder')" id="btn-cylinder" class="tab-btn active px-5 py-2.5 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap text-sm"><i class="fa-solid fa-database mr-2"></i>원기둥</button>
+        <button onclick="switchTab('cone')" id="btn-cone" class="tab-btn px-5 py-2.5 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap text-sm"><i class="fa-solid fa-ice-cream mr-2"></i>원뿔</button>
+        <button onclick="switchTab('sphere')" id="btn-sphere" class="tab-btn px-5 py-2.5 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap text-sm"><i class="fa-solid fa-basketball mr-2"></i>구</button>
+        <button onclick="switchTab('revolution')" id="btn-revolution" class="tab-btn px-5 py-2.5 rounded-full border border-slate-200 bg-white text-slate-600 font-bold whitespace-nowrap text-sm"><i class="fa-solid fa-rotate mr-2"></i>회전체 만들기</button>
     </div>
 
-    <!-- Main Content Area -->
-    <div id="capture-area" class="capture-area max-w-5xl mx-auto bg-white p-6 md:p-8">
-        
-        <!-- Info Header -->
+    <!-- Main Content -->
+    <div id="capture-area" class="capture-area max-w-6xl mx-auto bg-white p-6 md:p-8">
         <div class="border-b pb-4 mb-6 flex justify-between items-end">
             <div>
                 <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">6학년 2학기</span>
@@ -109,148 +114,309 @@
             </div>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-8">
-            <!-- Left: 3D Simulator -->
-            <div class="flex flex-col">
+        <div class="grid md:grid-cols-2 gap-8 h-full">
+            <!-- Left: Simulator -->
+            <div class="flex flex-col h-full">
+                <!-- Top Controls -->
                 <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
                     <span class="text-sm font-bold text-gray-500"><i class="fa-solid fa-cube mr-1"></i>3D 관찰 도구</span>
-                    <!-- Dynamic Controls -->
                     <div id="sim-controls" class="flex flex-wrap gap-1 justify-end"></div>
                 </div>
-                <div id="canvas-container"></div>
-                <p id="sim-guide" class="text-xs text-center text-gray-400 mt-2">
-                    <i class="fa-solid fa-mouse"></i> 왼쪽 드래그: 회전 | 휠: 확대/축소 | 오른쪽 드래그: 이동
+                
+                <!-- Visualization Wrapper -->
+                <div class="viz-wrapper group">
+                    <!-- Canvas Container -->
+                    <div id="canvas-container"></div>
+
+                    <!-- Dimension Sliders Overlay (Safe from innerHTML clear) -->
+                    <div id="dim-controls" class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-slate-200 text-xs w-48 transition-opacity opacity-100 z-10">
+                        <h4 class="font-bold text-slate-700 mb-2 flex justify-between">
+                            <span>📏 크기 조절</span>
+                            <button onclick="resetDimensions()" class="text-blue-500 hover:text-blue-700 text-[10px]">초기화</button>
+                        </h4>
+                        
+                        <div class="mb-2">
+                            <label class="flex justify-between mb-1 text-slate-500">
+                                <span>반지름(r)</span>
+                                <span id="val-radius" class="font-bold text-blue-600">1.0</span>
+                            </label>
+                            <input type="range" id="slider-radius" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" oninput="updateShapeDims()">
+                        </div>
+
+                        <div id="div-height">
+                            <label class="flex justify-between mb-1 text-slate-500">
+                                <span>높이(h)</span>
+                                <span id="val-height" class="font-bold text-blue-600">2.5</span>
+                            </label>
+                            <input type="range" id="slider-height" min="1.0" max="4.0" step="0.1" value="2.5" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" oninput="updateShapeDims()">
+                        </div>
+                    </div>
+                </div>
+                
+                <p id="sim-guide" class="text-xs text-center text-gray-400 mt-2 flex justify-center gap-4">
+                    <span><i class="fa-solid fa-rotate mr-1"></i>왼쪽: 회전</span>
+                    <span><i class="fa-solid fa-magnifying-glass mr-1"></i>휠: 확대/축소</span>
+                    <span><i class="fa-solid fa-arrows-up-down-left-right mr-1"></i>오른쪽: 이동</span>
                 </p>
             </div>
 
-            <!-- Right: Interactive Worksheet -->
-            <div id="worksheet-content" class="space-y-6 overflow-y-auto max-h-[500px] pr-2">
-                <!-- Content injected by JS -->
-            </div>
+            <!-- Right: Interactive Quiz -->
+            <div id="worksheet-content" class="space-y-6 overflow-y-auto max-h-[500px] pr-2"></div>
         </div>
-
+        
         <div class="mt-8 pt-4 border-t text-center text-xs text-gray-400">
-            위 내용은 입체도형 탐구 실험실에서 직접 관찰하고 작성한 결과입니다.
+            위 내용은 입체도형 탐구 실험실에서 직접 조작하고 관찰한 결과입니다.
         </div>
     </div>
 
-    <!-- Loading Overlay -->
+    <!-- Toast Notification (Replaces Alert) -->
+    <div id="toast-container" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-300 opacity-0">
+        <div id="toast-message" class="bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg font-bold text-sm flex items-center gap-2">
+            <!-- Icon and text injected via JS -->
+        </div>
+    </div>
+
+    <!-- Loading -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center hidden">
         <div class="text-center">
             <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500"></i>
-            <p class="mt-4 text-gray-600">이미지 저장 중...</p>
+            <p class="mt-4 text-gray-600">처리 중...</p>
         </div>
     </div>
 
     <script>
         // --- 1. Content Data ---
-        // Defines the worksheet HTML and specific controls for each tab
         const contents = {
             cylinder: {
                 title: "원기둥의 비밀 탐구",
+                hasHeight: true,
                 controls: `
-                    <button onclick="toggleNet('cylinder')" id="btn-net-cyl" class="ctrl-btn"><i class="fa-solid fa-expand mr-1"></i>전개도</button>
+                    <button onclick="toggleNetAnimation('cylinder')" id="btn-net-cyl" class="ctrl-btn bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"><i class="fa-solid fa-film mr-1"></i>전개도 보기</button>
                     <button onclick="toggleCut('h')" id="btn-cut-h" class="ctrl-btn"><i class="fa-solid fa-scissors mr-1"></i>가로 자르기</button>
                     <button onclick="toggleCut('v')" id="btn-cut-v" class="ctrl-btn"><i class="fa-solid fa-scissors mr-1"></i>세로 자르기</button>
-                    <button onclick="resetShape()" class="ctrl-btn"><i class="fa-solid fa-rotate-right"></i></button>
                 `,
                 html: `
-                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                        <h3 class="font-bold text-slate-700 mb-3">1. 구성 요소 관찰</h3>
-                        <ul class="space-y-3 text-sm text-slate-600">
-                            <li>① 위, 아래의 합동인 두 원: <input class="input-blank w-20" type="text"></li>
-                            <li>② 옆을 둘러싼 곡면: <input class="input-blank w-20" type="text"></li>
-                            <li>③ 두 밑면 사이의 거리: <input class="input-blank w-20" type="text"></li>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-800 mb-3 flex items-center"><span class="bg-slate-200 text-slate-600 text-xs px-2 py-1 rounded mr-2">탐구 1</span> 원기둥의 구성 요소</h3>
+                        <ul class="space-y-3 text-sm">
+                            <li class="flex flex-col">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span>① 서로 평행하고 합동인 두 원(🔴):</span>
+                                    <input class="input-blank w-24" type="text" data-ans="밑면">
+                                </div>
+                                <span class="text-xs text-slate-400 pl-4">💡 힌트: '바닥'과 '천장'에 있는 면이에요.</span>
+                            </li>
+                            <li class="flex flex-col">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span>② 두 밑면과 만나는 굽은 면(🔵):</span>
+                                    <input class="input-blank w-24" type="text" data-ans="옆면">
+                                </div>
+                                <span class="text-xs text-slate-400 pl-4">💡 힌트: 기둥의 옆을 감싸고 있어요.</span>
+                            </li>
+                            <li class="flex flex-col">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span>③ 두 밑면 사이의 수직 거리:</span>
+                                    <input class="input-blank w-24" type="text" data-ans="높이">
+                                </div>
+                                <span class="text-xs text-slate-400 pl-4">💡 힌트: 원기둥의 키를 잴 때 사용해요.</span>
+                            </li>
                         </ul>
+                        <div class="mt-4 text-right">
+                            <button onclick="checkAnswers(this)" class="text-xs bg-slate-800 text-white px-3 py-1.5 rounded hover:bg-slate-700 transition cursor-pointer">정답 확인</button>
+                        </div>
                     </div>
-                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                        <h3 class="font-bold text-blue-800 mb-2">💡 자르기와 펼치기 (단면/전개도)</h3>
-                        <ul class="space-y-2 text-sm text-blue-700">
-                            <li>• <strong>가로</strong>로 자른 단면의 모양: <input class="input-blank w-20 bg-white" type="text"></li>
-                            <li>• <strong>세로</strong>로 자른 단면의 모양: <input class="input-blank w-20 bg-white" type="text"></li>
-                            <li>• 전개도에서 <strong>옆면</strong>의 모양: <input class="input-blank w-20 bg-white" type="text"></li>
-                        </ul>
+
+                    <div class="bg-blue-50 p-5 rounded-xl border border-blue-200 shadow-sm">
+                        <h3 class="font-bold text-blue-800 mb-3 flex items-center"><span class="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded mr-2">미션</span> 전개도의 비밀</h3>
+                        <p class="text-sm text-blue-700 mb-3 leading-relaxed">
+                            <strong>[미션]</strong> 왼쪽 슬라이더로 <strong>반지름</strong>을 크게 만든 후 <strong>[전개도 보기]</strong>를 눌러보세요.
+                        </p>
+                        <div class="bg-white p-3 rounded-lg border border-blue-100 mb-3">
+                            <p class="text-sm font-bold text-slate-700 mb-2">Q. 반지름이 커지면 전개도의 옆면(직사각형)은?</p>
+                            <label class="block text-sm text-slate-600 mb-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                <input type="radio" name="cyl_q1" value="wrong"> 세로(높이)가 길어진다.
+                            </label>
+                            <label class="block text-sm text-slate-600 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                <input type="radio" name="cyl_q1" value="correct"> 가로 길이가 길어진다.
+                            </label>
+                        </div>
+                        <p class="text-sm text-blue-800 font-bold mb-1">🤔 왜 그럴까요?</p>
+                        <p class="text-sm text-slate-700 bg-white p-2 rounded border border-blue-100">
+                            옆면의 가로 길이는 밑면의 ( <input class="input-blank w-16 text-center" type="text" data-ans="둘레"> )와 딱 맞닿아야 하기 때문입니다.
+                        </p>
+                        <div class="mt-3 text-right">
+                            <button onclick="checkMission(this, 'cyl_q1')" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-500 transition cursor-pointer">정답 및 원리 확인</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-indigo-50 p-5 rounded-xl border border-indigo-200 shadow-sm">
+                        <h3 class="font-bold text-indigo-800 mb-3 flex items-center"><span class="bg-indigo-200 text-indigo-800 text-xs px-2 py-1 rounded mr-2">탐구 3</span> 단면 탐구</h3>
+                        <p class="text-sm text-indigo-700 mb-3">
+                            <strong>[세로 자르기]</strong> 버튼을 눌러보세요. 회전축을 품고 자른 단면은 어떤 모양인가요?
+                        </p>
+                        <div class="flex gap-2">
+                            <button onclick="checkChoice(this, 'correct')" class="flex-1 border border-indigo-300 bg-white text-indigo-700 py-2 rounded text-sm hover:bg-indigo-50 cursor-pointer">직사각형</button>
+                            <button onclick="checkChoice(this, 'wrong')" class="flex-1 border border-indigo-300 bg-white text-indigo-700 py-2 rounded text-sm hover:bg-indigo-50 cursor-pointer">원</button>
+                        </div>
                     </div>
                 `
             },
             cone: {
                 title: "원뿔의 비밀 탐구",
+                hasHeight: true,
                 controls: `
-                    <button onclick="toggleNet('cone')" id="btn-net-cone" class="ctrl-btn"><i class="fa-solid fa-expand mr-1"></i>전개도</button>
+                    <button onclick="toggleNetAnimation('cone')" id="btn-net-cone" class="ctrl-btn bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"><i class="fa-solid fa-film mr-1"></i>전개도 보기</button>
                     <button onclick="toggleCut('h')" id="btn-cut-h" class="ctrl-btn"><i class="fa-solid fa-scissors mr-1"></i>가로 자르기</button>
                     <button onclick="toggleCut('v')" id="btn-cut-v" class="ctrl-btn"><i class="fa-solid fa-scissors mr-1"></i>세로 자르기</button>
-                    <button onclick="resetShape()" class="ctrl-btn"><i class="fa-solid fa-rotate-right"></i></button>
                 `,
                 html: `
-                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                        <h3 class="font-bold text-slate-700 mb-3">1. 구성 요소 관찰</h3>
-                        <ul class="space-y-3 text-sm text-slate-600">
-                            <li>① 뾰족한 부분의 점: <input class="input-blank w-20" type="text"></li>
-                            <li>② 꼭짓점과 밑면을 잇는 선(옆면): <input class="input-blank w-16" type="text"></li>
-                            <li>③ 높이와 모선 중 더 긴 것: <input class="input-blank w-16" type="text"></li>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-800 mb-3 flex items-center"><span class="bg-slate-200 text-slate-600 text-xs px-2 py-1 rounded mr-2">탐구 1</span> 원뿔의 구성 요소</h3>
+                        <ul class="space-y-3 text-sm">
+                            <li class="flex flex-col">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span>1. 뾰족한 부분의 점:</span>
+                                    <input class="input-blank w-24" type="text" data-ans="원뿔의꼭짓점">
+                                </div>
+                                <span class="text-xs text-slate-400 pl-4">💡 힌트: 가장 위에 있는 뾰족한 점이에요.</span>
+                            </li>
+                            <li class="flex flex-col">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span>2. 꼭짓점과 밑면의 원주를 잇는 선:</span>
+                                    <input class="input-blank w-24" type="text" data-ans="모선">
+                                </div>
+                                <span class="text-xs text-slate-400 pl-4">💡 힌트: 옆면을 따라 내려오는 미끄럼틀 같은 선이에요.</span>
+                            </li>
                         </ul>
+                        <div class="mt-4 text-right">
+                            <button onclick="checkAnswers(this)" class="text-xs bg-slate-800 text-white px-3 py-1.5 rounded hover:bg-slate-700 transition cursor-pointer">정답 확인</button>
+                        </div>
                     </div>
-                    <div class="bg-orange-50 p-4 rounded-lg border border-orange-100">
-                        <h3 class="font-bold text-orange-800 mb-2">💡 자르기와 펼치기</h3>
-                        <ul class="space-y-2 text-sm text-orange-700">
-                            <li>• <strong>가로</strong>로 자른 단면의 모양: <input class="input-blank w-20 bg-white" type="text"></li>
-                            <li>• <strong>세로</strong>로 자른 단면의 모양: <input class="input-blank w-20 bg-white" type="text"></li>
-                            <li>• 전개도에서 <strong>옆면</strong>의 모양: <input class="input-blank w-20 bg-white" type="text"></li>
-                        </ul>
+
+                    <div class="bg-orange-50 p-5 rounded-xl border border-orange-200 shadow-sm">
+                        <h3 class="font-bold text-orange-800 mb-3 flex items-center"><span class="bg-orange-200 text-orange-800 text-xs px-2 py-1 rounded mr-2">미션</span> 높이 vs 모선</h3>
+                        <p class="text-sm text-orange-700 mb-3 leading-relaxed">
+                            <strong>[미션]</strong> 슬라이더로 <strong>높이</strong>를 아주 낮게(1.0) 줄여보세요. 그래도 여전히 <strong>모선</strong>이 더 긴가요?
+                        </p>
+                        <div class="bg-white p-3 rounded-lg border border-orange-100">
+                            <p class="text-sm font-bold text-slate-700 mb-2">Q. 원뿔에서 항상 더 긴 것은 무엇인가요?</p>
+                            <label class="block text-sm text-slate-600 mb-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                <input type="radio" name="cone_q1" value="correct"> 모선의 길이
+                            </label>
+                            <label class="block text-sm text-slate-600 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                <input type="radio" name="cone_q1" value="wrong"> 높이
+                            </label>
+                        </div>
+                        <p class="text-xs text-orange-600 mt-2 font-medium">
+                            💡 이유: 직각삼각형에서 빗변(모선)이 가장 길기 때문입니다.
+                        </p>
+                        <div class="mt-3 text-right">
+                            <button onclick="checkMission(this, 'cone_q1')" class="text-xs bg-orange-600 text-white px-3 py-1.5 rounded hover:bg-orange-500 transition cursor-pointer">확인하기</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm mt-4">
+                        <h3 class="font-bold text-slate-800 mb-3 flex items-center"><span class="bg-slate-200 text-slate-600 text-xs px-2 py-1 rounded mr-2">탐구 3</span> 자르기</h3>
+                        <p class="text-sm text-slate-600 mb-3">
+                            <strong>[세로 자르기]</strong>를 해보세요. 단면은 무슨 모양인가요?
+                        </p>
+                        <div class="flex gap-2">
+                            <button onclick="checkChoice(this, 'correct')" class="flex-1 border border-slate-300 bg-white text-slate-700 py-2 rounded text-sm hover:bg-slate-50 cursor-pointer">이등변삼각형</button>
+                            <button onclick="checkChoice(this, 'wrong')" class="flex-1 border border-slate-300 bg-white text-slate-700 py-2 rounded text-sm hover:bg-slate-50 cursor-pointer">원</button>
+                        </div>
                     </div>
                 `
             },
             sphere: {
                 title: "구의 비밀 탐구",
+                hasHeight: false,
                 controls: `
                     <button onclick="toggleCut('h')" id="btn-cut-h" class="ctrl-btn"><i class="fa-solid fa-scissors mr-1"></i>가로 자르기</button>
                     <button onclick="toggleCut('v')" id="btn-cut-v" class="ctrl-btn"><i class="fa-solid fa-scissors mr-1"></i>세로 자르기</button>
-                    <button onclick="resetShape()" class="ctrl-btn"><i class="fa-solid fa-rotate-right"></i></button>
                 `,
                 html: `
-                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                        <h3 class="font-bold text-slate-700 mb-3">1. 특징 관찰</h3>
-                        <ul class="space-y-3 text-sm text-slate-600">
-                            <li>① 어느 방향에서 봐도 모양이 같나요? <input class="input-blank w-16" type="text"></li>
-                            <li>② 가장 안쪽에 있는 점: <input class="input-blank w-20" type="text"></li>
-                            <li>③ 중심에서 겉면까지의 거리: <input class="input-blank w-20" type="text"></li>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-800 mb-3 flex items-center"><span class="bg-slate-200 text-slate-600 text-xs px-2 py-1 rounded mr-2">탐구 1</span> 구의 구성 요소</h3>
+                        <ul class="space-y-3 text-sm">
+                            <li class="flex flex-col">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span>1. 가장 안쪽에 있는 점:</span>
+                                    <input class="input-blank w-24" type="text" data-ans="구의중심">
+                                </div>
+                                <span class="text-xs text-slate-400 pl-4">💡 힌트: 공의 한가운데 있어요.</span>
+                            </li>
+                            <li class="flex flex-col">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span>2. 중심에서 겉면까지의 거리:</span>
+                                    <input class="input-blank w-24" type="text" data-ans="반지름">
+                                </div>
+                                <span class="text-xs text-slate-400 pl-4">💡 힌트: 이 길이가 길수록 큰 공이 돼요.</span>
+                            </li>
                         </ul>
+                        <div class="mt-4 text-right">
+                            <button onclick="checkAnswers(this)" class="text-xs bg-slate-800 text-white px-3 py-1.5 rounded hover:bg-slate-700 transition cursor-pointer">정답 확인</button>
+                        </div>
                     </div>
-                    <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                        <h3 class="font-bold text-purple-800 mb-2">💡 단면의 비밀</h3>
-                        <p class="text-sm text-purple-700 leading-relaxed mb-2">
-                            구를 반으로 자르면 단면은 항상 <strong>원</strong>입니다.<br>
-                            이때, 중심을 지나는 단면이 가장 ( <input class="input-blank w-12 bg-white text-center" type="text"> ) 원이 됩니다.
+
+                    <div class="bg-purple-50 p-5 rounded-xl border border-purple-200 shadow-sm">
+                        <h3 class="font-bold text-purple-800 mb-3 flex items-center"><span class="bg-purple-200 text-purple-800 text-xs px-2 py-1 rounded mr-2">미션</span> 어떻게 잘라도 같을까?</h3>
+                        <p class="text-sm text-purple-700 mb-3 leading-relaxed">
+                            <strong>[미션]</strong> 구를 <strong>가로</strong>로 자르고, 다시 <strong>세로</strong>로 잘라보세요. 단면의 모양이 달라지나요?
                         </p>
+                        <div class="bg-white p-3 rounded-lg border border-purple-100">
+                            <p class="text-sm font-bold text-slate-700 mb-2">Q. 구를 반으로 자른 단면은 어떤 모양인가요?</p>
+                            <label class="block text-sm text-slate-600 mb-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                <input type="radio" name="sphere_q1" value="wrong"> 자르는 방향에 따라 다르다.
+                            </label>
+                            <label class="block text-sm text-slate-600 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                <input type="radio" name="sphere_q1" value="correct"> 항상 원 모양이다.
+                            </label>
+                        </div>
+                        <div class="mt-3 text-right">
+                            <button onclick="checkMission(this, 'sphere_q1')" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-500 transition cursor-pointer">확인하기</button>
+                        </div>
                     </div>
                 `
             },
             revolution: {
                 title: "회전체 만들기 실험실",
+                hasHeight: false, 
                 controls: ``,
                 html: `
-                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
-                        <h3 class="font-bold text-slate-700 mb-3">1. 평면도형 선택하기</h3>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm mb-4">
+                        <h3 class="font-bold text-slate-700 mb-3">1. 돌려보기 (평면도형 ➜ 입체도형)</h3>
                         <div class="flex gap-2 mb-4">
-                            <button onclick="setRevolutionShape('rect')" class="rev-btn flex-1 bg-white border border-gray-300 hover:bg-blue-50 text-xs py-2 rounded text-center font-bold text-slate-600">직사각형</button>
-                            <button onclick="setRevolutionShape('tri')" class="rev-btn flex-1 bg-white border border-gray-300 hover:bg-blue-50 text-xs py-2 rounded text-center font-bold text-slate-600">직각삼각형</button>
-                            <button onclick="setRevolutionShape('semi')" class="rev-btn flex-1 bg-white border border-gray-300 hover:bg-blue-50 text-xs py-2 rounded text-center font-bold text-slate-600">반원</button>
+                            <button onclick="setRevolutionShape('rect')" class="rev-btn flex-1 bg-white border border-gray-300 hover:bg-blue-50 text-xs py-2 rounded text-center font-bold text-slate-600 transition">직사각형</button>
+                            <button onclick="setRevolutionShape('tri')" class="rev-btn flex-1 bg-white border border-gray-300 hover:bg-blue-50 text-xs py-2 rounded text-center font-bold text-slate-600 transition">직각삼각형</button>
+                            <button onclick="setRevolutionShape('semi')" class="rev-btn flex-1 bg-white border border-gray-300 hover:bg-blue-50 text-xs py-2 rounded text-center font-bold text-slate-600 transition">반원</button>
                         </div>
-                        <h3 class="font-bold text-slate-700 mb-2">2. 돌려보기 (회전)</h3>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-500">0°</span>
+                        <div class="flex items-center gap-2 bg-white p-2 rounded border border-slate-200">
+                            <span class="text-xs text-gray-500 font-bold">0°</span>
                             <input type="range" id="revSlider" min="0" max="6.28" step="0.1" value="0" class="flex-1" oninput="updateRevolution(this.value)">
-                            <span class="text-xs text-gray-500">360°</span>
+                            <span class="text-xs text-gray-500 font-bold">360°</span>
                         </div>
                         <p class="text-xs text-center text-blue-600 mt-2 font-bold" id="rev-shape-name">도형을 선택하고 슬라이더를 움직여보세요!</p>
                     </div>
-                    <div class="bg-green-50 p-4 rounded-lg border border-green-100">
-                        <h3 class="font-bold text-green-800 mb-2">💡 회전체 결과</h3>
-                        <ul class="space-y-2 text-sm text-green-700">
-                            <li>• 직사각형 회전 $\rightarrow$ <input class="input-blank w-20 bg-white" type="text"></li>
-                            <li>• 직각삼각형 회전 $\rightarrow$ <input class="input-blank w-20 bg-white" type="text"></li>
-                            <li>• 반원 회전 $\rightarrow$ <input class="input-blank w-20 bg-white" type="text"></li>
+                    <div class="bg-green-50 p-5 rounded-xl border border-green-200 shadow-sm">
+                        <h3 class="font-bold text-green-800 mb-3 flex items-center"><span class="bg-green-200 text-green-800 text-xs px-2 py-1 rounded mr-2">퀴즈</span> 짝꿍 찾기</h3>
+                        <p class="text-sm text-green-700 mb-3">어떤 평면도형을 돌려야 할까요?</p>
+                        <ul class="space-y-3 text-sm">
+                            <li class="flex justify-between items-center">
+                                <span>1. 직사각형 →</span>
+                                <input class="input-blank w-24" type="text" data-ans="원기둥">
+                            </li>
+                            <li class="flex justify-between items-center">
+                                <span>2. 직각삼각형 →</span>
+                                <input class="input-blank w-24" type="text" data-ans="원뿔">
+                            </li>
+                            <li class="flex justify-between items-center">
+                                <span>3. 반원 →</span>
+                                <input class="input-blank w-24" type="text" data-ans="구">
+                            </li>
                         </ul>
+                        <div class="mt-4 text-right">
+                            <button onclick="checkAnswers(this)" class="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-500 transition cursor-pointer">정답 확인</button>
+                        </div>
                     </div>
                 `
             }
@@ -260,84 +426,106 @@
         let scene, camera, renderer, controls;
         let currentMeshGroup = new THREE.Group();
         let currentTab = 'cylinder';
-        let isNetVisible = false;
-        let activeCut = null; // 'h', 'v', or null
+        let activeCut = null; 
         let revShapeType = 'rect';
+        
+        let currentR = 1.0;
+        let currentH = 2.5;
 
-        // Define Clipping Planes
-        // Vertical: Cuts along X axis (Normal: -1, 0, 0)
+        const matSide = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.4, metalness: 0.1, side: THREE.DoubleSide });
+        const matBase = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4, metalness: 0.1, side: THREE.DoubleSide });
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x1e40af });
+
         const planeVert = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
-        // Horizontal: Cuts along Y axis (Normal: 0, -1, 0)
         const planeHoriz = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+
+        let isNetOpen = false;
+        let animationGroup = null;
+        let animParts = {}; 
 
         function init3D() {
             const container = document.getElementById('canvas-container');
-            
             scene = new THREE.Scene();
             scene.background = null;
-
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-            camera.position.set(4, 3, 5);
-
+            camera.position.set(5, 4, 6);
+            
             renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.localClippingEnabled = true; // Enable Clipping
+            renderer.localClippingEnabled = true;
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
+            
+            const resetBtn = document.createElement('button');
+            resetBtn.className = 'absolute top-2 right-2 bg-white/80 p-1.5 rounded shadow hover:bg-white text-slate-500 text-xs';
+            resetBtn.innerHTML = '<i class="fa-solid fa-expand"></i> 시점 초기화';
+            resetBtn.onclick = resetCamera;
+            container.appendChild(resetBtn);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
+            controls.maxDistance = 20;
+            controls.minDistance = 2;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(5, 10, 7);
             scene.add(dirLight);
-
+            
             loadShape('cylinder');
             animate();
         }
 
         function loadShape(type) {
             scene.remove(currentMeshGroup);
+            if (animationGroup) { scene.remove(animationGroup); animationGroup = null; }
+            TWEEN.removeAll();
+            
             currentMeshGroup = new THREE.Group();
-            isNetVisible = false;
-            activeCut = null; // Reset cut
+            activeCut = null; isNetOpen = false;
             updateCutButtons();
 
-            // Common Material with DoubleSide for "hollow" look inside cut
-            // clipShadows: true
-            const material = new THREE.MeshStandardMaterial({ 
-                color: 0x3b82f6, roughness: 0.3, metalness: 0.1, 
-                transparent: true, opacity: 0.9, 
-                side: THREE.DoubleSide,
-                clippingPlanes: [] // Init empty
-            });
-            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x1e40af, clippingPlanes: [] });
+            matSide.clippingPlanes = [];
+            matBase.clippingPlanes = [];
 
             if (type === 'cylinder') {
-                const geometry = new THREE.CylinderGeometry(1, 1, 2.5, 32);
-                const mesh = new THREE.Mesh(geometry, material);
-                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry), lineMaterial);
-                currentMeshGroup.add(mesh, edges);
+                const geo = new THREE.CylinderGeometry(currentR, currentR, currentH, 32, 1, true);
+                const mesh = new THREE.Mesh(geo, matSide);
+                
+                const topGeo = new THREE.CircleGeometry(currentR, 32);
+                const topMesh = new THREE.Mesh(topGeo, matBase);
+                topMesh.rotation.x = -Math.PI / 2;
+                topMesh.position.y = currentH / 2;
+                
+                const botMesh = new THREE.Mesh(topGeo, matBase);
+                botMesh.rotation.x = Math.PI / 2;
+                botMesh.position.y = -currentH / 2;
+                
+                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(currentR,currentR,currentH,32)), lineMat);
+                currentMeshGroup.add(mesh, topMesh, botMesh, edges);
 
             } else if (type === 'cone') {
-                const geometry = new THREE.ConeGeometry(1.2, 2.5, 32);
-                const mesh = new THREE.Mesh(geometry, material);
-                // Center cone vertically for cleaner cuts
-                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry), lineMaterial);
-                currentMeshGroup.add(mesh, edges);
+                const geo = new THREE.ConeGeometry(currentR, currentH, 32, 1, true);
+                const mesh = new THREE.Mesh(geo, matSide);
+                mesh.position.y = 0; 
+                
+                const baseGeo = new THREE.CircleGeometry(currentR, 32);
+                const baseMesh = new THREE.Mesh(baseGeo, matBase);
+                baseMesh.rotation.x = Math.PI / 2;
+                baseMesh.position.y = -currentH / 2;
+
+                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.ConeGeometry(currentR, currentH, 32)), lineMat);
+                currentMeshGroup.add(mesh, baseMesh, edges);
 
             } else if (type === 'sphere') {
-                const geometry = new THREE.SphereGeometry(1.3, 32, 32);
-                const mesh = new THREE.Mesh(geometry, material);
-                const line = new THREE.LineSegments(new THREE.WireframeGeometry(geometry), new THREE.LineBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.3 }));
-                const centerMesh = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({color: 0xff0000}));
-                currentMeshGroup.add(mesh, line, centerMesh);
+                const geo = new THREE.SphereGeometry(currentR * 1.3, 32, 32); 
+                const mesh = new THREE.Mesh(geo, matSide);
+                const line = new THREE.LineSegments(new THREE.WireframeGeometry(geo), new THREE.LineBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.3 }));
+                currentMeshGroup.add(mesh, line);
 
             } else if (type === 'revolution') {
-                // Axis Line
-                const axisGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -2.5, 0), new THREE.Vector3(0, 2.5, 0)]);
+                const axisGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -3, 0), new THREE.Vector3(0, 3, 0)]);
                 const axisLine = new THREE.Line(axisGeo, new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 }));
                 currentMeshGroup.add(axisLine);
                 setRevolutionShape('rect', true);
@@ -346,198 +534,326 @@
             scene.add(currentMeshGroup);
         }
 
-        // --- Cut Logic ---
-        function toggleCut(direction) {
-            if (activeCut === direction) {
-                activeCut = null; // Toggle Off
-            } else {
-                activeCut = direction; // Set New Cut
-            }
-            updateCutButtons();
+        function toggleNetAnimation(type) {
+            if (activeCut !== null) { toggleCut(activeCut); }
             
-            // Apply planes to all meshes in group
+            const sliders = document.getElementById('dim-controls');
+            
+            if (!isNetOpen) {
+                isNetOpen = true;
+                if(sliders) sliders.classList.add('opacity-50', 'pointer-events-none');
+                document.getElementById(type === 'cylinder' ? 'btn-net-cyl' : 'btn-net-cone').classList.add('active');
+                scene.remove(currentMeshGroup);
+                
+                if (animationGroup) scene.remove(animationGroup);
+                animationGroup = new THREE.Group();
+                scene.add(animationGroup);
+                animParts = {};
+
+                if (type === 'cylinder') {
+                    const numStrips = 32;
+                    const stripWidth = (2 * Math.PI * currentR) / numStrips;
+                    
+                    const stripsGroup = new THREE.Group();
+                    for (let i = 0; i < numStrips; i++) {
+                        const stripGeo = new THREE.PlaneGeometry(stripWidth, currentH);
+                        const strip = new THREE.Mesh(stripGeo, matSide);
+                        const angle = (i / numStrips) * 2 * Math.PI;
+                        strip.position.set(Math.sin(angle) * currentR, 0, Math.cos(angle) * currentR);
+                        strip.rotation.y = angle;
+                        strip.userData = {
+                            pos3D: strip.position.clone(), rot3D: strip.rotation.clone(),
+                            pos2D: new THREE.Vector3((i - numStrips/2) * stripWidth, 0, 0), rot2D: new THREE.Euler(0, 0, 0)
+                        };
+                        stripsGroup.add(strip);
+                    }
+                    animParts.strips = stripsGroup; animationGroup.add(stripsGroup);
+
+                    const baseGeo = new THREE.CircleGeometry(currentR, 32);
+                    const topMesh = new THREE.Mesh(baseGeo, matBase);
+                    topMesh.userData = {
+                        startPos: new THREE.Vector3(0, currentH/2, 0), startRot: new THREE.Euler(-Math.PI/2, 0, 0),
+                        endPos: new THREE.Vector3(0, currentH/2 + currentR, 0), endRot: new THREE.Euler(0, 0, 0)
+                    };
+                    topMesh.position.copy(topMesh.userData.startPos); topMesh.rotation.copy(topMesh.userData.startRot);
+                    animParts.top = topMesh; animationGroup.add(topMesh);
+
+                    const botMesh = new THREE.Mesh(baseGeo, matBase);
+                    botMesh.userData = {
+                        startPos: new THREE.Vector3(0, -currentH/2, 0), startRot: new THREE.Euler(Math.PI/2, 0, 0),
+                        endPos: new THREE.Vector3(0, -currentH/2 - currentR, 0), endRot: new THREE.Euler(0, 0, 0)
+                    };
+                    botMesh.position.copy(botMesh.userData.startPos); botMesh.rotation.copy(botMesh.userData.startRot);
+                    animParts.bot = botMesh; animationGroup.add(botMesh);
+
+                    new TWEEN.Tween({ t: 0 }).to({ t: 1 }, 1500).easing(TWEEN.Easing.Cubic.InOut).onUpdate(obj => {
+                        const t = obj.t;
+                        animParts.strips.children.forEach(strip => {
+                            strip.position.lerpVectors(strip.userData.pos3D, strip.userData.pos2D, t);
+                            strip.rotation.y = strip.userData.rot3D.y * (1-t) + strip.userData.rot2D.y * t;
+                        });
+                        animParts.top.position.lerpVectors(animParts.top.userData.startPos, animParts.top.userData.endPos, t);
+                        animParts.top.rotation.x = animParts.top.userData.startRot.x * (1-t);
+                        animParts.bot.position.lerpVectors(animParts.bot.userData.startPos, animParts.bot.userData.endPos, t);
+                        animParts.bot.rotation.x = animParts.bot.userData.startRot.x * (1-t);
+                    }).start();
+
+                } else if (type === 'cone') {
+                    const s = Math.sqrt(currentR*currentR + currentH*currentH);
+                    const stripsGroup = new THREE.Group();
+                    const numStrips = 32;
+                    const anglePerStrip = (2*Math.PI) / numStrips;
+                    const flatAnglePerStrip = (2*Math.PI*currentR/s) / numStrips;
+                    const startAngle2D = -(2*Math.PI*currentR/s)/2;
+
+                    for(let i=0; i<numStrips; i++) {
+                        const shape = new THREE.Shape(); shape.moveTo(0,0);
+                        const w = (2*Math.PI*currentR)/numStrips;
+                        shape.lineTo(-w/2, -s); shape.lineTo(w/2, -s); shape.lineTo(0,0);
+                        const strip = new THREE.Mesh(new THREE.ShapeGeometry(shape), matSide);
+                        const angle3D = i * anglePerStrip;
+                        const tilt = Math.atan(currentR/currentH);
+                        const pivot = new THREE.Group(); pivot.position.set(0, currentH/2, 0); pivot.add(strip);
+                        const rot3D = new THREE.Euler(tilt, angle3D, 0, 'YXZ');
+                        const rot2D = new THREE.Euler(0, 0, -(startAngle2D + i*flatAnglePerStrip + flatAnglePerStrip/2));
+                        pivot.userData = { rot3D: rot3D, rot2D: rot2D };
+                        pivot.rotation.copy(rot3D);
+                        stripsGroup.add(pivot);
+                    }
+                    animParts.strips = stripsGroup; animationGroup.add(stripsGroup);
+
+                    const baseMesh = new THREE.Mesh(new THREE.CircleGeometry(currentR, 32), matBase);
+                    baseMesh.userData = {
+                        startPos: new THREE.Vector3(0, -currentH/2, 0), startRot: new THREE.Euler(Math.PI/2, 0, 0),
+                        endPos: new THREE.Vector3(0, currentH/2 - s - currentR, 0), endRot: new THREE.Euler(0, 0, 0)
+                    };
+                    baseMesh.position.copy(baseMesh.userData.startPos); baseMesh.rotation.copy(baseMesh.userData.startRot);
+                    animParts.base = baseMesh; animationGroup.add(baseMesh);
+
+                    new TWEEN.Tween({ t: 0 }).to({ t: 1 }, 1500).easing(TWEEN.Easing.Cubic.InOut).onUpdate(obj => {
+                        const t = obj.t;
+                        animParts.strips.children.forEach(pivot => {
+                            const q3D = new THREE.Quaternion().setFromEuler(pivot.userData.rot3D);
+                            const q2D = new THREE.Quaternion().setFromEuler(pivot.userData.rot2D);
+                            pivot.quaternion.slerpQuaternions(q3D, q2D, t);
+                        });
+                        animParts.base.position.lerpVectors(animParts.base.userData.startPos, animParts.base.userData.endPos, t);
+                        animParts.base.rotation.x = animParts.base.userData.startRot.x * (1 - t);
+                    }).start();
+                }
+                new TWEEN.Tween(camera.position).to({ x: 0, y: 0, z: Math.max(8, currentH*2.5) }, 1500).easing(TWEEN.Easing.Cubic.InOut).start();
+
+            } else {
+                isNetOpen = false;
+                if(sliders) sliders.classList.remove('opacity-50', 'pointer-events-none');
+                document.getElementById(type === 'cylinder' ? 'btn-net-cyl' : 'btn-net-cone').classList.remove('active');
+                
+                new TWEEN.Tween({ t: 1 }).to({ t: 0 }, 1500).easing(TWEEN.Easing.Cubic.InOut).onUpdate(obj => {
+                    const t = obj.t;
+                    if (type === 'cylinder') {
+                        animParts.strips.children.forEach(strip => {
+                            strip.position.lerpVectors(strip.userData.pos3D, strip.userData.pos2D, t);
+                            strip.rotation.y = strip.userData.rot3D.y * (1-t) + strip.userData.rot2D.y * t;
+                        });
+                        animParts.top.position.lerpVectors(animParts.top.userData.startPos, animParts.top.userData.endPos, t);
+                        animParts.top.rotation.x = animParts.top.userData.startRot.x * (1-t);
+                        animParts.bot.position.lerpVectors(animParts.bot.userData.startPos, animParts.bot.userData.endPos, t);
+                        animParts.bot.rotation.x = animParts.bot.userData.startRot.x * (1-t);
+                    } else if (type === 'cone') {
+                        animParts.strips.children.forEach(pivot => {
+                            const q3D = new THREE.Quaternion().setFromEuler(pivot.userData.rot3D);
+                            const q2D = new THREE.Quaternion().setFromEuler(pivot.userData.rot2D);
+                            pivot.quaternion.slerpQuaternions(q3D, q2D, t);
+                        });
+                        animParts.base.position.lerpVectors(animParts.base.userData.startPos, animParts.base.userData.endPos, t);
+                        animParts.base.rotation.x = animParts.base.userData.startRot.x * (1 - t);
+                    }
+                }).onComplete(() => {
+                    scene.remove(animationGroup); animationGroup = null;
+                    loadShape(type); resetCamera();
+                }).start();
+            }
+        }
+
+        function toggleCut(direction) {
+            if (activeCut === direction) activeCut = null; 
+            else activeCut = direction;
+            updateCutButtons();
             const planes = [];
             if (activeCut === 'h') planes.push(planeHoriz);
             if (activeCut === 'v') planes.push(planeVert);
-
-            currentMeshGroup.traverse((child) => {
-                if (child.material) {
-                    child.material.clippingPlanes = planes;
-                    child.material.needsUpdate = true;
-                }
+            currentMeshGroup.traverse(child => {
+                if (child.material) { child.material.clippingPlanes = planes; child.material.needsUpdate = true; }
             });
         }
-
         function updateCutButtons() {
             document.querySelectorAll('.ctrl-btn').forEach(btn => btn.classList.remove('active'));
             if (activeCut === 'h') document.getElementById('btn-cut-h')?.classList.add('active');
             if (activeCut === 'v') document.getElementById('btn-cut-v')?.classList.add('active');
         }
 
-        // --- Net (Unfolding) Logic ---
-        function toggleNet(type) {
-            // Reset Cuts
-            activeCut = null; 
-            updateCutButtons();
-            
-            scene.remove(currentMeshGroup);
-            currentMeshGroup = new THREE.Group();
-            const material = new THREE.MeshStandardMaterial({ color: 0x3b82f6, side: THREE.DoubleSide });
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x1e40af });
-
-            if (!isNetVisible) {
-                // Show Net
-                if (type === 'cylinder') {
-                    // Rect (Body)
-                    const rect = new THREE.Mesh(new THREE.PlaneGeometry(6.28, 2.5), material);
-                    const rectEdge = new THREE.LineSegments(new THREE.EdgesGeometry(rect.geometry), lineMat);
-                    // Circles (Base)
-                    const circGeo = new THREE.CircleGeometry(1, 32);
-                    const topCirc = new THREE.Mesh(circGeo, material); topCirc.position.y = 2.25;
-                    const botCirc = new THREE.Mesh(circGeo, material); botCirc.position.y = -2.25;
-                    const topEdge = new THREE.LineSegments(new THREE.EdgesGeometry(circGeo), lineMat); topEdge.position.y = 2.25;
-                    const botEdge = new THREE.LineSegments(new THREE.EdgesGeometry(circGeo), lineMat); botEdge.position.y = -2.25;
-                    currentMeshGroup.add(rect, rectEdge, topCirc, topEdge, botCirc, botEdge);
-                } else if (type === 'cone') {
-                    // Sector (Side)
-                    // r=1.2, h=2.5, slant(s)=2.77. Theta = 2*PI*r/s = 2.72 rad (~156 deg)
-                    const s = 2.77; 
-                    const theta = 2.72;
-                    const sectorGeo = new THREE.CircleGeometry(s, 32, 0, theta);
-                    const sector = new THREE.Mesh(sectorGeo, material);
-                    // Rotate so arc is up
-                    sector.rotation.z = -theta/2 + Math.PI/2; 
-                    const sectorEdge = new THREE.LineSegments(new THREE.EdgesGeometry(sectorGeo), lineMat);
-                    sectorEdge.rotation.z = -theta/2 + Math.PI/2;
-                    
-                    // Base Circle
-                    // Attached to the arc? No, usually attached to the point or floating nearby in textbooks.
-                    // Let's place it above the vertex.
-                    const baseGeo = new THREE.CircleGeometry(1.2, 32);
-                    const base = new THREE.Mesh(baseGeo, material);
-                    base.position.y = 1.5; 
-                    const baseEdge = new THREE.LineSegments(new THREE.EdgesGeometry(baseGeo), lineMat);
-                    baseEdge.position.y = 1.5;
-                    
-                    currentMeshGroup.add(sector, sectorEdge, base, baseEdge);
-                }
-                
-                controls.reset(); 
-                camera.position.set(0, 0, 10);
-                isNetVisible = true;
-                const btnId = type === 'cylinder' ? 'btn-net-cyl' : 'btn-net-cone';
-                if(document.getElementById(btnId)) document.getElementById(btnId).innerHTML = '<i class="fa-solid fa-cube mr-1"></i>입체로 보기';
-            } else {
-                loadShape(type); // Revert
-                const btnId = type === 'cylinder' ? 'btn-net-cyl' : 'btn-net-cone';
-                if(document.getElementById(btnId)) document.getElementById(btnId).innerHTML = '<i class="fa-solid fa-expand mr-1"></i>전개도';
-            }
-            scene.add(currentMeshGroup);
-        }
-
-        // --- Revolution Logic ---
-        function setRevolutionShape(shape, skipClear) {
+        function setRevolutionShape(shape) {
             revShapeType = shape;
-            document.querySelectorAll('.rev-btn').forEach(btn => btn.classList.remove('bg-blue-100', 'text-blue-700', 'border-blue-500'));
-            // Note: In a real app we'd target specific button, here simplified
-            
-            if(!skipClear) {
-                const axis = currentMeshGroup.children[0];
-                currentMeshGroup.clear();
-                currentMeshGroup.add(axis);
-            }
+            const axis = currentMeshGroup.children[0];
+            currentMeshGroup.clear(); currentMeshGroup.add(axis);
             updateRevolution(document.getElementById('revSlider')?.value || 0);
-            
-            const names = {'rect': '직사각형', 'tri': '직각삼각형', 'semi': '반원'};
-            if(document.getElementById('rev-shape-name')) document.getElementById('rev-shape-name').innerText = `${names[shape]}을(를) 돌리는 중...`;
+            const map = {rect:'직사각형', tri:'직각삼각형', semi:'반원'};
+            document.getElementById('rev-shape-name').innerText = map[shape] + "을(를) 돌리는 중...";
         }
-
         function updateRevolution(val) {
             const angle = parseFloat(val);
-            // Cleanup old meshes (keep axis at index 0)
-            while(currentMeshGroup.children.length > 1) currentMeshGroup.remove(currentMeshGroup.children[1]);
-
-            const mat = new THREE.MeshStandardMaterial({ 
-                color: 0x10b981, roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide, transparent: true, opacity: 0.8 
-            });
-            const ghostMat = new THREE.LineBasicMaterial({ color: 0x047857 });
-
-            let geometry, points = [];
-
-            if (revShapeType === 'rect') {
-                if (angle > 0.1) {
-                    geometry = new THREE.CylinderGeometry(1, 1, 2, 32, 1, false, 0, angle);
-                    currentMeshGroup.add(new THREE.Mesh(geometry, mat));
-                }
-                points = [new THREE.Vector3(0,1,0), new THREE.Vector3(1,1,0), new THREE.Vector3(1,-1,0), new THREE.Vector3(0,-1,0)];
-            } else if (revShapeType === 'tri') {
-                if (angle > 0.1) {
-                    geometry = new THREE.ConeGeometry(1.2, 2.5, 32, 1, false, 0, angle);
-                    currentMeshGroup.add(new THREE.Mesh(geometry, mat));
-                }
-                points = [new THREE.Vector3(0,1.25,0), new THREE.Vector3(1.2,-1.25,0), new THREE.Vector3(0,-1.25,0)];
-            } else if (revShapeType === 'semi') {
-                if (angle > 0.1) {
-                    geometry = new THREE.SphereGeometry(1.3, 32, 32, 0, angle);
-                    currentMeshGroup.add(new THREE.Mesh(geometry, mat));
-                }
-                const curve = new THREE.EllipseCurve(0,0,1.3,1.3,-Math.PI/2,Math.PI/2,false,0);
-                points = curve.getPoints(30).map(p => new THREE.Vector3(p.x, p.y, 0));
-                points.push(new THREE.Vector3(0,1.3,0)); // close loop logic visual
-                points.push(new THREE.Vector3(0,-1.3,0));
-            }
-
-            // Draw Rotating Outline
-            if(points.length > 0) {
-                const ghostGeo = new THREE.BufferGeometry().setFromPoints(points);
-                const ghost = new THREE.Line(ghostGeo, ghostMat);
-                ghost.rotation.y = angle;
-                currentMeshGroup.add(ghost);
-                // Static Outline
-                const staticGhost = new THREE.Line(ghostGeo.clone(), new THREE.LineBasicMaterial({color: 0xcccccc, visible: angle > 0.1}));
-                currentMeshGroup.add(staticGhost);
-            }
+            if (currentMeshGroup.children.length > 1) currentMeshGroup.remove(currentMeshGroup.children[1]);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+            let geo;
+            if (revShapeType === 'rect' && angle > 0.1) geo = new THREE.CylinderGeometry(1,1,2,32,1,false,0,angle);
+            else if (revShapeType === 'tri' && angle > 0.1) geo = new THREE.ConeGeometry(1.2,2.5,32,1,false,0,angle);
+            else if (revShapeType === 'semi' && angle > 0.1) geo = new THREE.SphereGeometry(1.3,32,32,0,angle);
+            if (geo) currentMeshGroup.add(new THREE.Mesh(geo, mat));
         }
 
-        // --- Common ---
         function animate() {
             requestAnimationFrame(animate);
+            TWEEN.update();
             controls.update();
             renderer.render(scene, camera);
         }
 
         function switchTab(tab) {
             currentTab = tab;
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active', 'bg-blue-600', 'text-white', 'border-blue-600');
-                btn.classList.add('bg-white', 'text-slate-600');
-            });
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'bg-blue-600', 'text-white', 'border-blue-600'));
             document.getElementById(`btn-${tab}`).classList.add('active', 'bg-blue-600', 'text-white', 'border-blue-600');
-            
             document.getElementById('section-title').innerText = contents[tab].title;
             document.getElementById('sim-controls').innerHTML = contents[tab].controls;
             document.getElementById('worksheet-content').innerHTML = contents[tab].html;
             
+            const dims = document.getElementById('dim-controls');
+            if(tab === 'revolution') {
+                if(dims) dims.classList.add('hidden');
+            } else {
+                if(dims) {
+                    dims.classList.remove('hidden');
+                    if(contents[tab].hasHeight) document.getElementById('div-height').classList.remove('hidden');
+                    else document.getElementById('div-height').classList.add('hidden');
+                }
+            }
             loadShape(tab);
         }
 
-        function resetShape() {
-            loadShape(currentTab);
+        function resetDimensions() {
+            document.getElementById('slider-radius').value = 1.0;
+            document.getElementById('slider-height').value = 2.5;
+            updateShapeDims();
+        }
+
+        function updateShapeDims() {
+            currentR = parseFloat(document.getElementById('slider-radius').value);
+            currentH = parseFloat(document.getElementById('slider-height').value);
+            document.getElementById('val-radius').innerText = currentR.toFixed(1);
+            document.getElementById('val-height').innerText = currentH.toFixed(1);
+            if(isNetOpen) { toggleNetAnimation(currentTab); } else { loadShape(currentTab); }
+        }
+
+        function resetCamera() {
+            controls.reset();
+            camera.position.set(5, 4, 6);
+        }
+
+        function resetShape() { 
+            resetDimensions();
+            resetCamera();
+            loadShape(currentTab); 
+        }
+
+        // --- Toast & Quiz Logic ---
+        
+        function showToast(msg, isError = false) {
+            const container = document.getElementById('toast-container');
+            const message = document.getElementById('toast-message');
+            
+            // Icon
+            const icon = isError ? '<i class="fa-solid fa-circle-exclamation"></i>' : '<i class="fa-solid fa-circle-check"></i>';
+            message.innerHTML = `${icon} <span>${msg}</span>`;
+            
+            // Style
+            message.className = isError 
+                ? "bg-red-600 text-white px-6 py-3 rounded-full shadow-lg font-bold text-sm flex items-center gap-2"
+                : "bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg font-bold text-sm flex items-center gap-2";
+            
+            container.classList.remove('opacity-0');
+            
+            // Auto hide
+            if(window.toastTimeout) clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                container.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        function checkAnswers(btn) {
+            // Robust container finding
+            let container = btn.parentElement;
+            // Go up until we find a container-like div (the bordered boxes)
+            while(container && !container.classList.contains('bg-slate-50') && !container.classList.contains('bg-green-50')) {
+                container = container.parentElement;
+                if(container.id === 'worksheet-content') break; 
+            }
+            if(!container) container = btn.parentElement.parentElement; 
+
+            const inputs = container.querySelectorAll('input.input-blank');
+            let correctCount = 0;
+            
+            inputs.forEach(input => {
+                const userAns = input.value.trim().replace(/\s/g, ''); 
+                const correctAns = input.dataset.ans;
+                if(userAns === correctAns) {
+                    input.classList.add('input-correct');
+                    input.classList.remove('input-wrong');
+                    correctCount++;
+                } else {
+                    input.classList.add('input-wrong');
+                    input.classList.remove('input-correct');
+                }
+            });
+            
+            if(correctCount === inputs.length && inputs.length > 0) showToast("모두 정답입니다!");
+            else if(inputs.length > 0) showToast("틀린 부분이 있어요. 다시 확인해보세요!", true);
+        }
+
+        function checkMission(btn, name) {
+            const radios = document.getElementsByName(name);
+            let val = null;
+            for(const r of radios) {
+                if(r.checked) val = r.value;
+            }
+            
+            if(!val) {
+                showToast("답을 먼저 선택해주세요!", true);
+                return;
+            }
+
+            if(val === 'correct') {
+                showToast("정답입니다! 시뮬레이터로 잘 관찰했군요.");
+            } else {
+                showToast("다시 관찰해보세요. 슬라이더를 움직여보세요!", true);
+            }
+        }
+
+        function checkChoice(btn, type) {
+            if(type === 'correct') showToast("정답입니다!");
+            else showToast("다시 생각해보세요. '자르기' 기능을 사용해보세요.", true);
         }
 
         function saveScreenshot() {
-            const loading = document.getElementById('loading');
-            loading.classList.remove('hidden');
+            document.getElementById('loading').classList.remove('hidden');
             renderer.render(scene, camera);
             setTimeout(() => {
-                html2canvas(document.querySelector("#capture-area"), { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
+                html2canvas(document.querySelector("#capture-area")).then(canvas => {
                     const link = document.createElement('a');
-                    link.download = `입체도형_탐구_${new Date().toLocaleTimeString()}.png`;
-                    link.href = canvas.toDataURL("image/png");
+                    link.download = `입체도형_탐구.png`;
+                    link.href = canvas.toDataURL();
                     link.click();
-                    loading.classList.add('hidden');
+                    document.getElementById('loading').classList.add('hidden');
                 });
-            }, 100);
+            }, 200);
         }
 
         window.addEventListener('resize', () => {
